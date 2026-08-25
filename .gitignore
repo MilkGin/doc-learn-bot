@@ -1,0 +1,15 @@
+# 运行时生成的缓存与数据（重新运行会自动生成，无需提交）
+course_cache/
+chroma_db/
+docshelf/
+progress.json
+wrong_book.json
+doc_snapshot.json
+streamlit.log
+streamlit.err
+pull_*.err
+
+# Python
+__pycache__/
+*.pyc
+.env
