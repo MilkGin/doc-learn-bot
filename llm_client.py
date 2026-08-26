@@ -35,8 +35,11 @@ def _ollama(prompt: str, system: str) -> str:
     if not system:
         system = "你是一个严谨的技术文档助手，回答要基于给定资料，不要编造。"
     full = f"{system}\n\n{prompt}"
-    client = ollama.Client(host=OLLAMA_BASE_URL)
-    resp = client.generate(model=LLM_MODEL, prompt=full, stream=False)
+    # timeout 防止本地模型对超大请求无限挂起（UI 表现为"卡死"）
+    client = ollama.Client(host=OLLAMA_BASE_URL, timeout=300)
+    # 扩容上下文窗口，避免长文档检索片段叠加导致 500（超出默认 2048 token）
+    resp = client.generate(model=LLM_MODEL, prompt=full, stream=False,
+                           options={"num_ctx": 8192})
     return resp["response"] if isinstance(resp, dict) else resp.response
 
 

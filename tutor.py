@@ -38,8 +38,26 @@ def _cosine(a, b):
     return dot / (na * nb)
 
 
+def _chunk(text: str, size: int = 800, overlap: int = 100):
+    """把长文本切成带重叠的小块，避免长章节直接撑爆上下文。"""
+    n = len(text)
+    if n <= size:
+        return [text] if text.strip() else []
+    chunks, start = [], 0
+    while start < n:
+        end = min(start + size, n)
+        seg = text[start:end].strip()
+        if seg:
+            chunks.append(seg)
+        start += size - overlap
+    return chunks
+
+
 def ask_from_chapters(question: str, chapters: list):
     """基于当前文档章节内容做检索增强答疑（不依赖 chroma_db，支持上传文档）。
+
+    检索方式：将每章切成小块（800 字、重叠 100），对块做向量相似度，
+    仅取最相关的 TOP_K 块进上下文，从而对任意长度的文档都稳定、不溢出。
 
     chapters: [{"title","content","source"}, ...]（原型机已解析好的当前文档章节）
     返回 (answer, sources, kind)，kind="doc" 表示纯文档来源。
@@ -47,22 +65,21 @@ def ask_from_chapters(question: str, chapters: list):
     embed = OllamaEmbedding()
     q_vec = [float(x) for x in embed([question])[0]]
 
-    # 对每个章节算向量相似度，取最相关的 TOP_K 段
+    # 切片后按块算相似度
     scored = []
     for ch in chapters:
-        c_vec = [float(x) for x in embed([ch["content"][:3000]])[0]]
-        sim = _cosine(q_vec, c_vec)
-        scored.append((sim, ch))
+        for i, seg in enumerate(_chunk(ch["content"])):
+            c_vec = [float(x) for x in embed([seg])[0]]
+            sim = _cosine(q_vec, c_vec)
+            scored.append((sim, ch["title"], seg))
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    top = scored[:TOP_K]
-    docs = []
-    sources = []
-    for sim, ch in top:
+    docs, sources = [], []
+    for sim, title, seg in scored[:TOP_K]:
         if sim < 0.1:
             continue
-        docs.append(ch["content"][:2000])
-        sources.append(ch["title"])
+        docs.append(seg)
+        sources.append(title)
     if not docs:
         return "在当前文档中未检索到相关内容。", [], "doc"
 
@@ -155,6 +172,23 @@ def ask_web(question: str, max_results: int = 4):
     prompt = _WEB_TMPL.format(context=context, question=question)
     answer = generate(prompt)
     return answer, sources, "web"
+
+
+def ask_tutor(question: str, chapters: list = None):
+    """统一答疑入口：优先 chroma_db 全局向量库（方案五），失败/无索引则回退章节检索。
+
+    返回 (answer, sources, kind)。这样长文档既稳定（向量库按块检索），
+    又兼容「上传即学」的会话内章节检索。
+    """
+    try:
+        ans, sources, kind = ask_doc(question)
+        if sources:  # 有命中来源才算成功，否则回退
+            return ans, sources, kind
+    except Exception:
+        pass
+    if chapters:
+        return ask_from_chapters(question, chapters)
+    return "尚未建立索引，且该文档不在当前会话中，无法答疑。", [], "doc"
 
 
 def _web_search(query: str, max_results: int = 4):

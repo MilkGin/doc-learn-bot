@@ -13,17 +13,14 @@ set NEED_OLLAMA=1
 findstr /i "LLM_PROVIDER=deepseek" .env >nul 2>&1 && set NEED_OLLAMA=0
 
 if "%NEED_OLLAMA%"=="1" (
-    echo [1/3] 正在启动 Ollama 本地服务...
-    REM 尝试用默认端口探测；实际端口以 .env 的 OLLAMA_PORT 为准
+    echo [1/3] 正在准备 Ollama 本地服务...
     set "OL_PORT=11434"
     for /f "tokens=2 delims==" %%a in ('findstr /i "^OLLAMA_PORT" .env') do set "OL_PORT=%%a"
     if "%OL_PORT%"=="" set "OL_PORT=11434"
 
-    REM 探测端口是否已在监听；未监听则启动 ollama serve
     powershell -NoProfile -Command "exit (Test-NetConnection -ComputerName 127.0.0.1 -Port %OL_PORT% -InformationLevel Quiet -WarningAction SilentlyContinue)" >nul 2>&1
     if errorlevel 1 (
         echo   Ollama 未在 %OL_PORT% 端口运行，正在启动...
-        REM 尝试常见安装路径
         if exist "%LOCALAPPDATA%\Programs\Ollama\ollama.exe" (
             start "" "%LOCALAPPDATA%\Programs\Ollama\ollama.exe" serve
         ) else if exist "%ProgramFiles%\Ollama\ollama.exe" (
@@ -38,15 +35,22 @@ if "%NEED_OLLAMA%"=="1" (
     echo.
 )
 
-REM ---- 2. 检查并建立文档索引（可选，首次/换文档后需要） ----
-if not exist "chroma_db\chroma.sqlite3" (
-    echo [2/3] 首次使用，正在建立文档索引...
-    python ingest.py
-    echo.
+REM ---- 2. 可选：建立全局文档索引（仅当 docs/ 存在且 chroma_db 缺失时） ----
+REM 注意：主程序基于章节内存检索，不依赖 chroma_db；此步骤失败不影响启动。
+if exist "docs" (
+    if not exist "chroma_db\chroma.sqlite3" (
+        echo [2/3] 检测到 docs/，正在建立文档索引（可选）...
+        call python ingest.py
+        if errorlevel 1 (
+            echo   [!] 索引建立失败，已跳过（不影响主程序运行）。
+        )
+    ) else (
+        echo [2/3] 文档索引已存在。
+    )
 ) else (
-    echo [2/3] 文档索引已存在（换文档后可手动重跑 python ingest.py）
-    echo.
+    echo [2/3] 未检测到 docs/ 目录，跳过全局索引（主程序仍可正常使用）。
 )
+echo.
 
 REM ---- 3. 启动网页原型机 ----
 echo [3/3] 正在启动网页界面...

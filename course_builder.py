@@ -48,7 +48,12 @@ _EXPLAIN_TMPL = """你是一个工业技术文档讲师。请用有条理的语�
 【文档原文】
 {content}
 
-请输出讲解（3-6 个要点，中文，简洁）："""
+讲解要点（务必覆盖，3-6 个要点，中文，简洁）：
+1. 本章核心结论与关键机制（学员看完应能回答"这一章到底在说什么、为什么重要"）。
+2. 易混淆点与常见误区（明确"不是什么""容易错在哪"）。
+3. 关键术语的确切含义与判定条件。
+4. 若涉及操作步骤/流程，点明关键约束与前提，而不是罗列先后顺序。
+请让讲解本身包含回答本章练习所需的全部要点，使学员读完讲解即可作答。"""
 
 
 def explain_chapter(title: str, content: str, add_fire: bool = False) -> str:
@@ -60,13 +65,28 @@ def explain_chapter(title: str, content: str, add_fire: bool = False) -> str:
 # ---------- 选择题生成 ----------
 
 _QUIZ_TMPL = """你是一个出题专家。请严格根据下面的【文档原文】出 {n} 道单选题。
-要求：
-1. 每题只有一个正确选项，其余 3 个为合理干扰项（不要明显错误）。
-2. 题干和选项必须基于原文事实，不能凭空捏造。
-3. 必须给出正确选项字母和简要解析（引用原文要点）。
-4. 只输出 JSON，不要任何额外说明文字。
+
+出题质量要求（最重要）：
+1. 题目必须有"建设性"：考查学员对概念本质、机制、因果、判定条件、适用边界、易错点的
+   理解与应用，而非机械记忆。
+2. 禁止出以下低质量题目：
+   - 只问"先后/顺序/第几步/第几条"（程序性记忆题）；
+   - 仅考查"某个词在原文哪一段/哪一句出现"（定位题）；
+   - 题干本身就是原文原句照搬、换个空让填（复述题）；
+   - 答案仅仅是一组术语的排列或编号。
+3. 每题只有一个正确选项，其余 3 个为合理且具迷惑性的干扰项（如混淆相似概念、忽略前提、
+   张冠李戴），不要明显错误的选项。
+4. 题干和选项必须基于原文事实，不能凭空捏造。
+5. 必须给出正确选项字母和简要解析（引用原文要点，说明为什么对、错项错在哪）。
+6. 只输出 JSON，不要任何额外说明文字。
 
 {instruction}
+
+提示：下面附上【本章讲解要点】，出题时请确保每题的正确答案都能从该讲解要点与原文中
+得到支撑，使学员读完讲解即可答对。
+
+【本章讲解要点】
+{explain}
 
 输出格式（严格 JSON 数组）：
 [
@@ -94,10 +114,16 @@ def _extract_json(text: str):
         return None
 
 
-def generate_quiz(content: str, n: int = 3, add_fire: bool = False) -> list:
-    """生成 n 道选择题，返回校验后的题目列表。"""
+def generate_quiz(content: str, n: int = 3, add_fire: bool = False,
+                  explain: str = "") -> list:
+    """生成 n 道选择题，返回校验后的题目列表。
+
+    explain: 可选，本章讲解要点。传入后出题会要求答案能在讲解+原文中得到支撑，
+    避免"讲解里没有、学员看了也不会做"的脱节。
+    """
     instruction = _FIRE_INSTRUCTION if add_fire else _BASE_INSTRUCTION
-    prompt = _QUIZ_TMPL.format(n=n, content=content, instruction=instruction)
+    prompt = _QUIZ_TMPL.format(n=n, content=content, instruction=instruction,
+                               explain=explain or "（未提供，请仅依据原文）")
     raw = generate(prompt)
     items = _extract_json(raw)
     if not items:
@@ -145,11 +171,12 @@ def build_lesson(title: str, content: str, source: str, n_quiz: int = 3,
     if use_cache and os.path.exists(cp):
         with open(cp, "r", encoding="utf-8") as f:
             return json.load(f)
+    explain = explain_chapter(title, content, add_fire)
     lesson = {
         "title": title,
         "source": source,
-        "explain": explain_chapter(title, content, add_fire),
-        "quiz": generate_quiz(content, n_quiz, add_fire),
+        "explain": explain,
+        "quiz": generate_quiz(content, n_quiz, add_fire, explain=explain),
     }
     with open(cp, "w", encoding="utf-8") as f:
         json.dump(lesson, f, ensure_ascii=False, indent=2)

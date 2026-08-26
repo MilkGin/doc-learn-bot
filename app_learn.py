@@ -22,7 +22,7 @@ import streamlit as st
 from chapter_split import parse_uploaded, split_into_chapters
 from course_builder import build_lesson, grade
 from formula_render import render_text
-from tutor import ask_from_chapters, ask_web, SOURCE_BADGE
+from tutor import ask_from_chapters, ask_web, ask_tutor, SOURCE_BADGE
 from wrong_book import add as wrong_add, count as wrong_count, all_items
 from progress import (get_doc, update as save_progress, list_docs,
                       save_chapters, load_chapters)
@@ -191,18 +191,29 @@ def parse_source() -> list:
     uploaded = st.session_state.get("uploaded_files") or []
     pasted = (st.session_state.get("pasted_text") or "").strip()
     chapters = []
-    for uf in uploaded:
+    files = list(uploaded) + ([None] if pasted else [])
+    for fi, uf in enumerate(uploaded):
         try:
-            text = parse_uploaded(uf.getvalue(), uf.name)
-            for ch in split_into_chapters(text):
-                ch["source"] = uf.name
-                chapters.append(ch)
+            with st.status(f"正在解析 {uf.name}（{len(uf.getvalue())/1024/1024:.1f} MB）…",
+                           expanded=False) as s:
+                text = parse_uploaded(uf.getvalue(), uf.name)
+                n = 0
+                for ch in split_into_chapters(text):
+                    ch["source"] = uf.name
+                    chapters.append(ch)
+                    n += 1
+                s.update(label=f"已解析 {uf.name}：{n} 个章节")
+            if len(uploaded) > 1:
+                st.progress((fi + 1) / len(uploaded))
         except Exception as e:
             st.error(f"解析 {uf.name} 失败：{e}")
     if pasted:
         for ch in split_into_chapters(pasted):
             ch["source"] = "粘贴文本"
             chapters.append(ch)
+    if len(chapters) > 80:
+        st.warning(f"文档较大，已切分为 {len(chapters)} 个章节（含合并保护）。"
+                   "首次进入每章会按需生成讲解与题目，可能稍慢，请耐心等待。")
     return chapters
 
 
@@ -211,9 +222,15 @@ def get_lesson(idx: int) -> dict:
         return st.session_state.generated[idx]
     ch = st.session_state.chapters[idx]
     add_fire = settings.get_fire()
-    with st.spinner(f"正在为「{ch['title']}」生成讲解与题目（约 10-30 秒）…"):
-        lesson = build_lesson(ch["title"], ch["content"], ch["source"], n_quiz=3,
-                              use_cache=True, add_fire=add_fire)
+    try:
+        with st.spinner(f"正在为「{ch['title']}」生成讲解与题目（约 10-30 秒）…"):
+            lesson = build_lesson(ch["title"], ch["content"], ch["source"], n_quiz=3,
+                                  use_cache=True, add_fire=add_fire)
+    except Exception as e:
+        return {"title": ch["title"], "source": ch["source"],
+                "explain": f"⚠️ 本章生成失败：{e}\n\n可能是内容过长导致本地模型超时。"
+                           "可尝试：① 在「设置」切换为 DeepSeek 后端；② 拆分文档为更小的章节后重试。",
+                "quiz": []}
     st.session_state.generated[idx] = lesson
     return lesson
 
@@ -257,7 +274,7 @@ def render_lesson():
         q = st.text_input("输入你的问题", key=f"tq{idx}")
         if st.button("提问", key=f"tqa{idx}") and q.strip():
             with st.spinner("检索当前文档中…"):
-                ans, sources, kind = ask_from_chapters(q, st.session_state.chapters)
+                ans, sources, kind = ask_tutor(q, st.session_state.chapters)
             st.info("💡 答疑：")
             st.info(SOURCE_BADGE.get(kind, ""))
             render_text(ans)
@@ -341,7 +358,7 @@ def _render_answer_feedback(idx: int, q_idx: int, q: dict, lesson: dict):
     if st.button(label, key=f"deep{idx}_{q_idx}"):
         with st.spinner("正在生成深度解析（约 10-20 秒）…"):
             if src == "doc":
-                ans, sources, kind = ask_from_chapters(
+                ans, sources, kind = ask_tutor(
                     f"请结合文档，深入分析这道题涉及的知识点与易错点：{q['question']}",
                     st.session_state.chapters)
             else:
