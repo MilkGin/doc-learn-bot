@@ -8,7 +8,7 @@
 - 错题本自动记录
 - 学习进度本地保存（断点续学）
 - 设置区：本地 Ollama / 在线 DeepSeek API 切换
-- 文档更新检测 → 再学习弹窗
+- 文档更新检测：向量比对章节语义，只提示"含义真的变了"的章节需要重学
 - 学习报告 + 得分
 
 运行：streamlit run app_learn.py
@@ -26,6 +26,7 @@ from tutor import ask_from_chapters, ask_web, ask_tutor, SOURCE_BADGE
 from wrong_book import add as wrong_add, count as wrong_count, all_items
 from progress import (get_doc, update as save_progress, list_docs,
                       save_chapters, load_chapters)
+import doc_watch
 import settings
 
 HERE = os.path.dirname(__file__)
@@ -183,7 +184,68 @@ def render_doc_input():
                 _init_state(key, chapters)
                 st.session_state.doc_name = doc_name_of(chapters)
                 _persist()
+                _check_doc_update(chapters)
                 st.success(f"已加入书架：{st.session_state.doc_name}")
+                st.rerun()
+
+
+def _check_doc_update(chapters: list):
+    """加入书架时做一次语义变更检测，把报告挂到 session 供学习页展示。
+
+    变更检测只是增强功能：Ollama 没跑或模型缺失时静默跳过，不能打断学习流程。
+    """
+    try:
+        report = doc_watch.check(chapters)
+    except Exception as e:  # noqa: BLE001
+        print(f"[学习机器人] 变更检测异常，已跳过: {e}")
+        return
+    if report and report.get("is_update"):
+        st.session_state.update_report = report
+
+
+def render_update_notice():
+    """文档改版提示：列出内容真的变了的章节，并支持一键跳到第一个需重学的章节。"""
+    rep = st.session_state.get("update_report")
+    if not rep:
+        return
+    changed = rep.get("changed") or []
+    added = rep.get("added") or []
+    if not (changed or added):
+        st.session_state.pop("update_report", None)
+        return
+
+    head = f"🔔 检测到文档更新：{len(changed)} 章内容变更、{len(added)} 章新增"
+    with st.expander(head + " —— 建议重学这些章节", expanded=True):
+        if changed:
+            st.markdown("**内容有变化的章节**")
+            for c in changed:
+                note = "同一节内容被重写" if c.get("reason") else "内容有修改"
+                was = f"，原：{c['was']}" if c.get("was") and c["was"] != c["title"] else ""
+                st.write(
+                    f"· 第 {c['idx'] + 1} 章 {c['title']}　相似度 {c['similarity']}"
+                    f"（{note}{was}）"
+                )
+        if added:
+            st.markdown("**新增章节**")
+            for a in added:
+                st.write(f"· 第 {a['idx'] + 1} 章 {a['title']}")
+        if rep.get("removed"):
+            st.markdown("**已删除章节**")
+            for t in rep["removed"]:
+                st.write(f"· {t}")
+        st.caption(f"其余 {len(rep.get('same') or [])} 章语义未变，可直接跳过。")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⏭️ 跳到第一个需重学的章节", key="jump_relearn"):
+                st.session_state.idx = rep["needs_relearn"][0]
+                st.session_state.q_idx = 0
+                _persist()
+                st.session_state.pop("update_report", None)
+                st.rerun()
+        with col2:
+            if st.button("知道了", key="dismiss_update"):
+                st.session_state.pop("update_report", None)
                 st.rerun()
 
 
@@ -436,7 +498,9 @@ def main():
                 _persist()
                 st.session_state.pop("chapters", None)
                 st.session_state.pop("doc_key", None)
+                st.session_state.pop("update_report", None)
                 st.rerun()
+        render_update_notice()
         render_lesson()
     else:
         # 主页：书架 + 新建文档
