@@ -1,0 +1,54 @@
+{
+ "config": {
+  "tag": "bge",
+  "model": "bge-m3",
+  "query_prefix": "",
+  "n_questions": 240,
+  "n_chunks": 554
+ },
+ "answerable": {
+  "n": 198,
+  "recall@1": 0.4878,
+  "recall@3": 0.6695,
+  "recall@5": 0.7947,
+  "recall@10": 0.8844,
+  "hit@5": 0.7273,
+  "MRR@10": 0.6817
+ },
+ "per_gold_doc": {
+  "paper_en.md": {
+   "n": 41,
+   "recall@5": 0.7894,
+   "MRR@10": 0.7041
+  },
+  "manual_zh.txt": {
+   "n": 61,
+   "recall@5": 0.7538,
+   "MRR@10": 0.6225
+  },
+  "kb_demo.md": {
+   "n": 96,
+   "recall@5": 0.8229,
+   "MRR@10": 0.7099
+  }
+ },
+ "no_answer": {
+  "n": 42,
+  "reject@tau=0.55": 0.3095,
+  "false_reject@tau=0.55": 0.0808,
+  "reject@tau=0.60": 0.6429,
+  "false_reject@tau=0.60": 0.202,
+  "reject@tau=0.65": 0.881,
+  "false_reject@tau=0.65": 0.4293,
+  "reject@tau=0.70": 0.9762,
+  "false_reject@tau=0.70": 0.7727,
+  "top1_sim_mean": 0.5812,
+  "top1_sim_p90": 0.6525
+ },
+ "answerable_top1_sim": {
+  "mean": 0.6485,
+  "p10": 0.5614,
+  "p90": 0.7224
+ },
+ "sanity_warnings": []
+}

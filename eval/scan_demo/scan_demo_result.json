@@ -1,0 +1,51 @@
+{
+ "pages": [
+  {
+   "page": "page_rc.png",
+   "transcribed_chars": 200,
+   "contains_expected_keyword": false
+  },
+  {
+   "page": "page_rth.png",
+   "transcribed_chars": 878,
+   "contains_expected_keyword": true
+  },
+  {
+   "page": "page_toc.png",
+   "transcribed_chars": 754,
+   "contains_expected_keyword": false
+  }
+ ],
+ "chapters": [
+  {
+   "title": "控制云台相机",
+   "level": 1,
+   "chars": 200
+  },
+  {
+   "title": "自动返航",
+   "level": 1,
+   "chars": 405
+  },
+  {
+   "title": "智能返航",
+   "level": 1,
+   "chars": 226
+  },
+  {
+   "title": "返航路线",
+   "level": 1,
+   "chars": 476
+  },
+  {
+   "title": "获取教学视频",
+   "level": 2,
+   "chars": 186
+  },
+  {
+   "title": "下载 配套 App",
+   "level": 2,
+   "chars": 386
+  }
+ ]
+}

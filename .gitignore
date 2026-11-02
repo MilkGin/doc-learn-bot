@@ -13,3 +13,34 @@ pull_*.err
 __pycache__/
 *.pyc
 .env
+
+# --- eval artifacts: model weights, caches, source corpus (not for public repo) ---
+eval/gguf/
+eval/embed_cache/
+eval/chroma_nomic/
+eval/chroma_bge/
+eval/corpus/
+*.gguf
+*.npz
+
+# --- personal job-hunting materials ---
+job/
+startlog.txt
+
+# --- evaluation raw data: contains internal business QA content, NEVER publish ---
+eval/qa_set.jsonl
+eval/qa_authored/
+eval/errors_*.csv
+eval/*_raw.jsonl
+eval/*_judge.csv
+eval/smoke_results.json
+eval/baseline_smoke.md
+eval/corpus_manifest.json
+eval/l2_vs_cosine_diag.json
+eval/scan_demo/*.transcribed.md
+eval/scan_demo/*.png
+# 脚本内硬编码了真实问题文本 / 内部 SOP 原文 / 内部语料来源映射
+eval/smoke_retrieve.py
+eval/threshold_check.py
+eval/export_corpus.py
+eval/threshold_check.json

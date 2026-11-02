@@ -1,0 +1,57 @@
+{
+ "config": {
+  "tag": "nomic_prefix",
+  "model": "nomic-embed-text",
+  "query_prefix": "search_query: ",
+  "n_questions": 240,
+  "n_chunks": 554
+ },
+ "answerable": {
+  "n": 198,
+  "recall@1": 0.157,
+  "recall@3": 0.2735,
+  "recall@5": 0.3242,
+  "recall@10": 0.4211,
+  "hit@5": 0.2879,
+  "MRR@10": 0.2757
+ },
+ "per_gold_doc": {
+  "paper_en.md": {
+   "n": 41,
+   "recall@5": 0.7285,
+   "MRR@10": 0.6541
+  },
+  "manual_zh.txt": {
+   "n": 61,
+   "recall@5": 0.2922,
+   "MRR@10": 0.2358
+  },
+  "kb_demo.md": {
+   "n": 96,
+   "recall@5": 0.1719,
+   "MRR@10": 0.1394
+  }
+ },
+ "no_answer": {
+  "n": 42,
+  "reject@tau=0.55": 0.0,
+  "false_reject@tau=0.55": 0.0,
+  "reject@tau=0.60": 0.0714,
+  "false_reject@tau=0.60": 0.0455,
+  "reject@tau=0.65": 0.2143,
+  "false_reject@tau=0.65": 0.1364,
+  "reject@tau=0.70": 0.5714,
+  "false_reject@tau=0.70": 0.4192,
+  "top1_sim_mean": 0.6955,
+  "top1_sim_p90": 0.7674
+ },
+ "answerable_top1_sim": {
+  "mean": 0.7115,
+  "p10": 0.6314,
+  "p90": 0.7895
+ },
+ "sanity_warnings": [
+  "reject@tau=0.55=0.0 恰为边界值，先怀疑评测脚本有 bug",
+  "false_reject@tau=0.55=0.0 恰为边界值，先怀疑评测脚本有 bug"
+ ]
+}

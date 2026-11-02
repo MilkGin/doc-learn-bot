@@ -1,0 +1,54 @@
+{
+ "config": {
+  "tag": "nomic",
+  "model": "nomic-embed-text",
+  "query_prefix": "",
+  "n_questions": 240,
+  "n_chunks": 554
+ },
+ "answerable": {
+  "n": 198,
+  "recall@1": 0.157,
+  "recall@3": 0.2647,
+  "recall@5": 0.3253,
+  "recall@10": 0.395,
+  "hit@5": 0.2828,
+  "MRR@10": 0.2643
+ },
+ "per_gold_doc": {
+  "paper_en.md": {
+   "n": 41,
+   "recall@5": 0.7195,
+   "MRR@10": 0.5975
+  },
+  "manual_zh.txt": {
+   "n": 61,
+   "recall@5": 0.3181,
+   "MRR@10": 0.2433
+  },
+  "kb_demo.md": {
+   "n": 96,
+   "recall@5": 0.1615,
+   "MRR@10": 0.1354
+  }
+ },
+ "no_answer": {
+  "n": 42,
+  "reject@tau=0.55": 0.119,
+  "false_reject@tau=0.55": 0.0051,
+  "reject@tau=0.60": 0.1905,
+  "false_reject@tau=0.60": 0.1061,
+  "reject@tau=0.65": 0.3571,
+  "false_reject@tau=0.65": 0.3182,
+  "reject@tau=0.70": 0.7143,
+  "false_reject@tau=0.70": 0.601,
+  "top1_sim_mean": 0.66,
+  "top1_sim_p90": 0.7377
+ },
+ "answerable_top1_sim": {
+  "mean": 0.6802,
+  "p10": 0.595,
+  "p90": 0.764
+ },
+ "sanity_warnings": []
+}
